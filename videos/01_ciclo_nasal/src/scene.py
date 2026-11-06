@@ -4,7 +4,7 @@ import math
 import numpy as np
 import skia
 from gfx import *
-from anatomy import (draw_face, face_outlines, draw_section, draw_air, draw_flow_arrows, flow_factor,
+from anatomy import (draw_face, face_outlines, draw_section, draw_bone_plate, draw_air, draw_flow_arrows, flow_factor,
                      CONCHAS, air_bounds)
 from timeline import T, WORDS, DURATION
 
@@ -193,19 +193,46 @@ def blink_amt(t):
     return 0.0
 
 
+def layer_state(t):
+    """skin: 0 = pele no lugar, 1 = afastada; split: 0 = placa de osso fechada, 1 = aberta."""
+    a = T["aviso"]
+    if t < a - 0.6:
+        skin = sm(t, T["lift"], T["lift"] + 0.9)
+        split = sm(t, T["split"], T["split"] + 1.0)
+        scan_p = prog(t, T["scan"], T["xray"] + 0.3)
+        ghost = 1.0 if scan_p >= 1 else 0.0
+        scan_y = lerp(-540, 380, ease(scan_p)) if 0 < scan_p < 1 else None
+    else:
+        split = 1 - sm(t, a - 0.55, a + 0.15)
+        skin = 1 - sm(t, a - 0.1, a + 0.6)
+        ghost = 1 - sm(t, a + 0.45, a + 0.95)
+        scan_y = None
+    return skin, split, ghost, scan_y
+
+
+def bone_layer(c, t):
+    """Placa de osso/cartilagem que se abre ao meio como uma maquete."""
+    _, q, _, _ = layer_state(t)
+    if q >= 0.999:
+        return
+    blink = blink_amt(t)
+    for half in (-1, 1):
+        c.save()
+        c.translate(half * 390 * q, 30 * q)
+        c.rotate(half * 9 * q)
+        c.clipRect(skia.Rect.MakeLTRB(-2000 if half < 0 else 0, -3000, 0 if half < 0 else 2000, 3000))
+        c.saveLayer(None, P(alpha=1 - q ** 2))
+        draw_bone_plate(c, t, blink)
+        if q > 0.001:  # face do corte iluminada
+            c.drawRect(skia.Rect.MakeLTRB(-6, -460, 6, 360), P(C("#FFFFFF", 0.9 * (1 - q)), blur=4))
+        c.restore()
+        c.restore()
+
+
 def face_layer(c, t, cam):
     """Rosto com os estados: normal, varredura raio-x, separação da camada e retorno."""
     flare = 1.0 + 0.08 * math.sin(t * 2 * math.pi / 3.6)
-    scan_p = prog(t, T["scan"], T["xray"] + 0.3)
-    lift = sm(t, T["lift"], T["lift"] + 1.1)
-    back = sm(t, T["aviso"] - 0.25, T["aviso"] + 0.55)
-    if t >= T["aviso"] - 0.25:
-        lift = 1 - back
-        ghost = 1 - sm(t, T["aviso"] + 0.3, T["aviso"] + 0.9)
-        scan_y = None
-    else:
-        ghost = 1.0 if scan_p >= 1 else 0.0
-        scan_y = lerp(-540, 380, ease(scan_p)) if 0 < scan_p < 1 else None
+    lift, _, ghost, scan_y = layer_state(t)
     if lift >= 0.999:
         return
     blink = blink_amt(t)
@@ -263,7 +290,8 @@ def section_opts(t):
         hl_septo=window(t, T["septo"] - 0.05, T["conchas"] - 0.4, fi=0.15, fo=0.3),
         hl_conchas=window(t, T["conchas"], T["mucosa"] - 0.35, fi=0.15, fo=0.3),
         hl_mucosa=window(t, T["mucosa"], T["vasos"] + 0.2, fi=0.15, fo=0.3) * (0.6 + 0.4 * math.sin(t * 9)),
-        glow=window(t, T["lift"] + 0.5, T["section"] + 0.2, fi=0.3, fo=0.5),
+        glow=window(t, T["split"] + 0.3, T["section"] + 0.3, fi=0.3, fo=0.5),
+        depth=layer_state(t)[1],
     )
 
 
@@ -344,7 +372,7 @@ def main_section(c, t, cam, alpha=1.0, extra=True):
     air_a = sm(t, T["section"] - 0.3, T["section"] + 0.5)
     draw_air(c, ta, -1, sL, alpha=air_a)
     draw_air(c, ta, 1, sR, alpha=air_a)
-    arr_a = window(t, T["estreita"] - 0.15, T["ciclo"] - 0.1, fi=0.3, fo=0.3) + \
+    arr_a = window(t, T["estreita"] - 0.15, T["ciclo"] + 0.5, fi=0.3, fo=0.3) + \
         window(t, T["r_incha"], T["aviso"] - 0.3, fi=0.3, fo=0.3)
     if arr_a > 0:
         draw_flow_arrows(c, sL, sR, alpha=min(1, arr_a), t=t)
@@ -420,13 +448,19 @@ def cycle_cards(c, t):
     t0, t1 = T["ciclo"] - 0.1, T["resumo"] + 0.05
     if not (t0 <= t <= t1 + 0.01):
         return
-    ap = eback(prog(t, t0, t0 + 0.45))
-    cards = [(280, 820, (1.0, 0.0), "AGORA"), (800, 820, (0.0, 1.0), "HORAS DEPOIS")]
+    cards = [(280, 820, (1.0, 0.0), "ANTES"), (800, 820, (0.0, 1.0), "HORAS DEPOIS")]
     cw, ch = 440, 560
+    tm = T["ciclo"] + 0.45  # fim do morph do corte para o card da direita
+    ap = eback(prog(t, tm + 0.1, tm + 0.5))
     for i, (x, y, (sl, sr), head) in enumerate(cards):
-        d = prog(t, t0 + 0.12 * i, t0 + 0.12 * i + 0.45)
-        sc = lerp(0.4, 1.0, eback(d))
-        a = min(1.0, d * 2.5)
+        if i == 1:
+            if t < tm:
+                continue
+            sc, a = 1.0, 1.0
+        else:
+            d = eout(prog(t, T["ciclo"] + 0.2, T["ciclo"] + 0.75))
+            x = lerp(-260, x, d)
+            sc, a = 1.0, min(1.0, d * 3)
         if a <= 0:
             continue
         c.saveLayer(None, P(alpha=a))
@@ -450,7 +484,9 @@ def cycle_cards(c, t):
         c.drawRRect(rr, P(C("#1A1A1A"), stroke=7))
         c.restore()
         c.restore()
-        pill_label(c, head, x, y - ch / 2 * sc - 6, alpha=a, scale=sc, dot=YELLOW if i else AIR_BLUE, size=30)
+        hp_ = eback(prog(t, (tm if i else T["ciclo"] + 0.6), (tm if i else T["ciclo"] + 0.6) + 0.3))
+        pill_label(c, head, x, y - ch / 2 * sc - 6, alpha=a * min(1, hp_ * 2), scale=lerp(0.5, 1, hp_),
+                   dot=YELLOW if i else AIR_BLUE, size=30)
     # ícone de ciclo entre os cards
     icon_cycle(c, 540, 820, 54 * ap, t, alpha=min(1, ap))
     # título
@@ -529,6 +565,9 @@ def rewind_fx(c, t):
         return
     a = math.sin(math.pi * p)
     c.drawRect(skia.Rect.MakeWH(W, H), P(C("#0A1A33", 0.22 * a)))
+    fl = 1 - prog(t, T["resumo"] - 0.05, T["resumo"] + 0.12)
+    if fl > 0:
+        c.drawRect(skia.Rect.MakeWH(W, H), P(C("#FFFFFF", 0.7 * fl)))
     rng = np.random.RandomState(int(t * 30))
     for _ in range(9):
         y = rng.uniform(0, H)
@@ -586,10 +625,9 @@ def compose(c, t):
     in_cards = T["ciclo"] - 0.1 <= t < T["resumo"] - 0.05
     rewinding = T["resumo"] - 0.05 <= t < T["resumo"] + 0.8
 
-    # ----- corte anatômico (por trás do rosto)
-    sec_a = sm(t, T["scan"], T["scan"] + 0.35)
-    if t > T["aviso"] + 0.55:
-        sec_a *= 1 - sm(t, T["aviso"] + 0.55, T["aviso"] + 0.95)
+    # ----- corte anatômico (por trás das camadas)
+    skin, split, ghost, _ = layer_state(t)
+    sec_on = (T["split"] - 0.05 <= t <= T["aviso"] + 0.2)
     if rewinding:
         # reproduz o corte "de trás para frente" (retrocesso real da animação)
         p = ease(prog(t, T["resumo"] - 0.05, T["resumo"] + 0.8))
@@ -597,17 +635,29 @@ def compose(c, t):
         main_section(c, tr, camera(tr), alpha=1.0)
         section_labels(c, tr, camera(tr))
     elif in_cards:
-        k = sm(t, T["ciclo"] - 0.1, T["ciclo"] + 0.3)
+        k = sm(t, T["ciclo"] - 0.1, T["ciclo"] + 0.45)
         if k < 1:
-            main_section(c, t, cam, alpha=1 - k)
+            # o corte encolhe e vira o card "HORAS DEPOIS" (morph contínuo)
+            tcx, tcy, tz = -(800 - ANCHOR[0]) / 1.32, -55.0, 1.32
+            mc = Cam(lerp(cam.cx, tcx, k), lerp(cam.cy, tcy, k), math.exp(lerp(math.log(cam.z), math.log(tz), k)))
+            L, Tp, R, B = lerp(0, 800 - 220, k), lerp(0, 820 - 280, k), lerp(W, 800 + 220, k), lerp(H, 820 + 280, k)
+            rr = skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(L, Tp, R, B), 34 * k, 34 * k)
+            c.drawRRect(rr, P(C("#0B2238", 0.35 * k), blur=16))
+            c.save()
+            c.clipRRect(rr, skia.ClipOp.kIntersect, True)
+            c.drawRRect(rr, P(shader=lin(0, Tp, 0, B, [C("#FFFFFF", k), C("#E6F1F8", k)])))
+            main_section(c, t, mc)
+            c.restore()
+            c.drawRRect(rr, P(C("#1A1A1A", k ** 2), stroke=7))
         cycle_cards(c, t)
-    elif sec_a > 0.001:
-        main_section(c, t, cam, alpha=sec_a)
+    elif sec_on:
+        main_section(c, t, cam)
 
-    # ----- rosto
-    if t < T["lift"] + 1.15 or t >= T["aviso"] - 0.3:
+    # ----- camadas (osso/cartilagem) e rosto
+    if t < T["section"] + 0.1 or t >= T["aviso"] - 0.6:
         c.save()
         cam.apply(c)
+        bone_layer(c, t)
         face_layer(c, t, cam)
         c.restore()
 
@@ -616,11 +666,13 @@ def compose(c, t):
         section_labels(c, t, cam)
         draw_inset(c, t, cam, congestion(t)[0])
     hook_air(c, t, cam)
-    # etiqueta PELE durante a separação das camadas
-    lift = sm(t, T["lift"], T["lift"] + 1.1)
-    if 0 < lift < 1:
-        pill_label(c, "PELE", 800, 560 - 140 * lift, alpha=min(1.0, 2.2 * math.sin(math.pi * lift)),
+    # etiquetas das camadas
+    if 0 < skin < 1 and t < T["aviso"]:
+        pill_label(c, "PELE", 800, 560 - 140 * skin, alpha=min(1.0, 2.2 * math.sin(math.pi * skin)),
                    dot="#EDB592", size=36)
+    if t < T["aviso"]:
+        label(c, "OSSO E CARTILAGEM", (540, 1300), t, T["lift"] + 0.45, T["split"] + 0.3, dot="#BCD9E6",
+              anchors=[cam.s(-26, -130), cam.s(-36, 38)])
     # títulos
     title(c, [[("UMA", "#FFFFFF"), ("NARINA", YELLOW)], [("RESPIRA", "#FFFFFF"), ("MELHOR?", YELLOW)]],
           250, 96, t, 0.15, T["scan"] - 0.25)

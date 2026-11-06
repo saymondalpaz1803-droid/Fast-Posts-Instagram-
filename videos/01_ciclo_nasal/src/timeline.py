@@ -37,8 +37,9 @@ T["narina"] = W("narina")
 T["melhor"] = W("melhor")
 T["scan"] = W("olha", "hook2")                 # varredura raio-x
 T["xray"] = W("dentro", "hook2")               # pele fica transparente
-T["lift"] = S("hook2", end=True) - 0.15        # camada de pele se afasta
-T["section"] = T["lift"] + 0.9                 # corte totalmente revelado
+T["lift"] = T["xray"] + 0.35                  # camada de pele se afasta
+T["split"] = T["lift"] + 0.75                 # placa de osso/cartilagem se abre ao meio
+T["section"] = T["split"] + 1.0               # corte totalmente revelado
 T["cavidades"] = W("cavidades")
 T["septo"] = W("septo")
 T["conchas"] = W("conchas")
@@ -73,6 +74,8 @@ SFX = [
     (T["narina"] - 0.05, "pop"),
     (T["scan"], "scan"),
     (T["lift"] - 0.1, "whoosh"),
+    (T["split"] - 0.05, "whoosh"),
+    (T["section"] - 0.15, "pop"),
     (T["cavidades"], "pop"),
     (T["septo"], "pop"),
     (T["conchas"], "pop"),
@@ -83,6 +86,7 @@ SFX = [
     (T["desincha"], "deflate"),
     (T["facilidade"], "pop"),
     (T["horas"] - 0.1, "ffwd"),
+    (T["ciclo"] - 0.15, "whoosh_s"),
     (T["ciclo_word"] - 0.05, "ding"),
     (T["sistema"], "zap"),
     (T["compensa"], "pop"),
@@ -90,7 +94,7 @@ SFX = [
     (T["r_incha"], "pop"),
     (T["r_desincha"], "pop"),
     (T["r_trocam"], "pop"),
-    (T["aviso"] - 0.15, "whoosh"),
+    (T["aviso"] - 0.4, "whoosh"),
     (T["aviso"] + 0.2, "alert"),
     (T["cta"] - 0.05, "whoosh_s"),
     (T["comentarios"], "pop"),

@@ -9,10 +9,21 @@ FPS = 30
 W, H = 1080, 1920
 
 
+SUB = int(os.environ.get("MB_SAMPLES", "3"))  # amostras de desfoque de movimento por quadro
+SHUTTER = 0.5                                   # obturador de 180°
+
+
 def work(i):
+    """Renderiza o quadro i com desfoque de movimento (média de sub-quadros)."""
     from scene import render_frame
-    a = render_frame(i / FPS)
-    return a[:, :, :3].tobytes()
+    t = i / FPS
+    if SUB <= 1:
+        return render_frame(t)[:, :, :3].tobytes()
+    acc = np.zeros((H, W, 3), np.float32)
+    for k in range(SUB):
+        off = ((k + 0.5) / SUB - 0.5) * SHUTTER / FPS
+        acc += render_frame(max(0.0, t + off))[:, :, :3]
+    return np.clip(acc / SUB + 0.5, 0, 255).astype(np.uint8).tobytes()
 
 
 def main():

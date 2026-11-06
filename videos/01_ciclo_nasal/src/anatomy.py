@@ -354,11 +354,11 @@ def draw_section(c, t, sL, sR, opts=None):
     # sombra no "chão"
     c.drawOval(oval(0, 318, 300, 30), P(C("#2B4A63", 0.25), blur=22))
     # espessura da maquete (extrusão)
-    depth = 34
+    depth = int(34 * o.get("depth", 1.0))
     for k in range(depth, 0, -3):
         sp = skia.Path(slab)
         sp.offset(0, k)
-        c.drawPath(sp, P(C(mixhex("#B8796E", "#D59A8C", 1 - k / depth))))
+        c.drawPath(sp, P(C(mixhex("#B8796E", "#D59A8C", 1 - k / max(depth, 1)))))
     # face de corte: camadas de tecido
     _layer_bands(c, slab)
     # ossos da face
@@ -481,3 +481,77 @@ def draw_flow_arrows(c, sL, sR, alpha=1.0, t=0.0):
         w = lerp(9, 22, f)
         bob = 4 * math.sin(t * 4 + side)
         draw_arrow(c, x, 100 + bob, x, lerp(30, -40, f) + bob, w, AIR_BLUE, ow=2.5, alpha=alpha)
+
+
+# ======================================================================== CAMADA INTERMEDIÁRIA
+CART_A, CART_B, CART_LINE = "#E4F2F8", "#BCD9E6", "#8FB4C4"
+
+
+def draw_bone_plate(c, t, blink=0.0):
+    """Camada abaixo da pele, no estilo maquete: ossos da face (creme) e cartilagens
+    do nariz (azul-claras), olhos mantidos para não ficar assustador."""
+    hp = head_path()
+    c.drawPath(hp, P(C("#000000", 0.18), blur=18))
+    c.drawPath(hp, P(shader=rad(-60, -170, 560, [C("#FBF5EA"), C(BONE_A), C(BONE_B)], [0, 0.5, 1])))
+    c.save()
+    c.clipPath(hp, skia.ClipOp.kIntersect, True)
+    c.drawOval(oval(330, 0, 120, 420), P(C("#A88B62", 0.25), blur=50))
+    # músculos visíveis em volta da boca e nas bochechas (tons suaves, sem sangue)
+    c.drawOval(oval(0, 165, 96, 58), P(shader=rad(0, 165, 96, [C("#E79A90"), C("#D07A72")])))
+    for k in range(18):
+        a = 2 * math.pi * k / 18
+        c.drawLine(math.cos(a) * 40, 165 + math.sin(a) * 24, math.cos(a) * 92, 165 + math.sin(a) * 54,
+                   P(C("#B9625C", 0.45), stroke=2))
+    c.drawOval(oval(0, 165, 42, 14), P(C("#C46B66")))
+    for s in (-1, 1):
+        mp = skia.Path()
+        mp.moveTo(200 * s, -60)
+        mp.cubicTo(170 * s, 20, 120 * s, 80, 80 * s, 130)
+        c.drawPath(mp, P(C("#E3A096", 0.55), stroke=24, blur=2))
+        c.drawPath(mp, P(C("#C9746D", 0.25), stroke=2))
+    c.restore()
+    # maçãs do rosto (zigomático) e arco das sobrancelhas
+    for s in (-1, 1):
+        c.drawOval(oval(190 * s, -40, 70, 40), P(C("#FFFFFF", 0.35), blur=18))
+        br = skia.Path()
+        br.moveTo(50 * s, -228)
+        br.quadTo(120 * s, -258, 200 * s, -215)
+        c.drawPath(br, P(C("#FFFFFF", 0.4), stroke=16, blur=6))
+    # órbitas com os olhos
+    for s in (-1, 1):
+        x, y = 120 * s, -150
+        c.drawCircle(x, y, 70, P(shader=rad(x, y, 70, [C("#B89A73"), C("#D9C3A0")], [0.6, 1])))
+        c.drawCircle(x, y, 70, P(C("#C2A67E"), stroke=3))
+        c.drawCircle(x, y + 2, 47, P(C("#000000", 0.25), blur=6))
+        c.drawCircle(x, y, 46, P(shader=rad(x - 14, y - 16, 62, [C("#FFFFFF"), C("#E3E9EE")])))
+        c.drawCircle(x, y, 25, P(shader=rad(x, y, 25, [C("#8A5A3A"), C("#5B3A26"), C("#2E1C12")], [0, 0.6, 1])))
+        c.drawCircle(x, y, 11, P(C("#0E0A08")))
+        c.drawCircle(x - 9, y - 9, 6, P(C("#FFFFFF", 0.95)))
+        if blink > 0:
+            c.drawRect(skia.Rect.MakeLTRB(x - 48, y - 48, x + 48, y - 48 + 96 * blink), P(C(BONE_B)))
+    # abertura piriforme (atrás das cartilagens)
+    pir = catmull(sym([(0, -70), (40, -64), (66, -10), (72, 50), (48, 86), (0, 92)]))
+    c.drawPath(pir, P(shader=rad(0, 20, 90, [C("#8E5F5A"), C("#B78079")])))
+    # ossos nasais
+    for s in (-1, 1):
+        nb = catmull([(3 * s, -200), (22 * s, -196), (44 * s, -80), (36 * s, -62), (3 * s, -66)], k=0.7)
+        c.drawPath(nb, P(shader=lin(0, -200, 0, -60, [C("#F7EFE2"), C(BONE_B)])))
+        c.drawPath(nb, P(C("#C2A67E"), stroke=2.5))
+    # cartilagens: septal (centro), laterais e alares
+    sept = skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(-8, -66, 8, 52), 6, 6)
+    c.drawRRect(sept, P(C(CART_B)))
+    for s in (-1, 1):
+        lat = catmull([(6 * s, -64), (38 * s, -70), (58 * s, -12), (46 * s, 10), (8 * s, 6)], k=0.7)
+        c.drawPath(lat, P(shader=lin(0, -70, 0, 10, [C(CART_A), C(CART_B)])))
+        c.drawPath(lat, P(C(CART_LINE), stroke=2.5))
+        c.drawOval(oval(34 * s, 38, 34, 28), P(shader=rad(28 * s, 28, 36, [C(CART_A), C(CART_B)])))
+        c.drawOval(oval(34 * s, 38, 34, 28), P(C(CART_LINE), stroke=2.5))
+    c.drawCircle(0, 18, 26, P(shader=rad(-6, 10, 28, [C("#F2FAFD"), C(CART_B)])))
+    c.drawCircle(0, 18, 26, P(C(CART_LINE), stroke=2.5))
+    for s in (-1, 1):
+        c.save()
+        c.translate(25 * s, 59)
+        c.rotate(18 * s)
+        c.drawOval(oval(0, 0, 14, 8), P(C("#6B3B36")))
+        c.restore()
+    c.drawPath(hp, P(C("#FFFFFF", 0.5), stroke=4))

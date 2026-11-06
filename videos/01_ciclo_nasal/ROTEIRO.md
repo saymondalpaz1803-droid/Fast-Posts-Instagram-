@@ -38,15 +38,17 @@ Mudanças em relação ao roteiro original, e por quê:
 | Tempo | Cena | O que aparece |
 |---|---|---|
 | 0:00–0:05 | 1 · Hook | Rosto 3D de frente → zoom no nariz. Setas azuis + partículas entrando nas narinas (lado direito maior). Título **UMA NARINA RESPIRA MELHOR?** · etiquetas NARINA / FLUXO DE AR |
-| 0:05–0:09 | 2 · Entrando no corpo | Varredura tipo raio-x desce pelo rosto; a pele fica transparente e o corte aparece alinhado por trás (órbitas atrás dos olhos, cavidade atrás do nariz). A camada de pele se afasta (etiqueta PELE) |
+| 0:05–0:10 | 2 · Entrando no corpo | Varredura tipo raio-x desce pelo rosto e a pele fica transparente. A camada de **PELE** se afasta em direção à câmera e revela a camada de **OSSO E CARTILAGEM** (ossos nasais, cartilagens do nariz, músculos ao redor da boca). Essa placa se abre ao meio como uma maquete e revela o corte, que ganha espessura |
 | 0:09–0:14 | 3 · Partes | Corte frontal em "maquete" (pele › gordura › músculo › osso). Destaque das **CAVIDADES NASAIS** e do **SEPTO** |
 | 0:14–0:20 | 3 · Partes | **CONCHAS NASAIS** (superior, média, inferior) → **MUCOSA** → lupa com os **VASOS SANGUÍNEOS** (sinusoides venosos) |
 | 0:20–0:31 | 4 · Mecanismo | Os vasos da lupa dilatam; a mucosa do lado esquerdo incha, o canal estreita (**MENOS AR**); o lado direito desincha (**MAIS AR**). Os dois lados continuam passando ar |
 | 0:31–0:35 | 5 · Tempo | Ícone amarelo ⏩ **HORAS DEPOIS** + relógio acelerado; partículas aceleram; os lados trocam |
-| 0:35–0:44 | 6 · Explicação | **CICLO NASAL**: dois estados lado a lado (AGORA / HORAS DEPOIS) com ícone de alternância; **SISTEMA NERVOSO** ligando os dois; barras de **FLUXO TOTAL SEMELHANTE** |
+| 0:35–0:44 | 6 · Explicação | O corte encolhe em um movimento contínuo e vira o card "HORAS DEPOIS"; o card "ANTES" entra deslizando. **CICLO NASAL**: dois estados lado a lado com ícone de alternância; **SISTEMA NERVOSO** ligando os dois; barras de **FLUXO TOTAL SEMELHANTE** |
 | 0:44–0:48 | 6b · Resumo | Ícone de retrocesso ⏪ — a animação volta de verdade — e repete em 3 passos numerados |
-| 0:48–0:56 | 7 · Aviso | Camadas voltam, rosto original. Cartão **ATENÇÃO**: entupimento persistente ou intenso → profissional de saúde |
+| 0:48–0:56 | 7 · Aviso | Montagem inversa: a placa de osso e cartilagem se fecha, a pele volta e o rosto original reaparece. Cartão **ATENÇÃO**: entupimento persistente ou intenso → profissional de saúde |
 | 0:56–1:01 | 7 · CTA | **VOCÊ JÁ PERCEBEU ISSO?** + balão de comentário; setas nas narinas alternando de tamanho |
+
+**Acabamento:** desfoque de movimento (3 amostras por quadro, obturador de 180°), curvas de easing em todas as câmeras e camadas, flash branco no retrocesso, áudio AAC 192 kbps embutido no MP4 (-14 LUFS).
 
 ## Checagem de conteúdo (cuidados do briefing)
 
