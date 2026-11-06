@@ -203,11 +203,10 @@ def main():
     voice = read_wav(os.path.join(BUILD, "narration_raw.wav"))
     voice = np.pad(voice, (0, max(0, n - len(voice))))[:n]
     # tratamento de voz: passa-alta, leve presença, compressão suave
-    v = hp(voice, 85)
-    v = v + 0.25 * bp(v, 2500, 5500)
-    thr = 0.25
+    v = hp(voice, 70)          # voz neural já é limpa: só remove graves inaudíveis
+    thr = 0.35
     a = np.abs(v)
-    gain = np.where(a > thr, (thr + (a - thr) / 3) / np.maximum(a, 1e-9), 1.0)
+    gain = np.where(a > thr, (thr + (a - thr) / 2) / np.maximum(a, 1e-9), 1.0)
     gain = lp(gain, 30, order=1)
     v = v * gain
     v /= np.max(np.abs(v)) + 1e-9

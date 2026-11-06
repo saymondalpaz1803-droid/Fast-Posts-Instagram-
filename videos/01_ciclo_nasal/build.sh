@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Gera o vídeo completo: narração -> quadros -> trilha/efeitos -> MP4 final.
-# Requisitos: ffmpeg, RHVoice + rhvoice-brazilian-portuguese, python3 com skia-python, numpy, scipy, pillow.
+# Requisitos: ffmpeg, python3 com edge-tts, skia-python, numpy, scipy, pillow (RHVoice só para TTS_ENGINE=rhvoice).
+# Voz: TTS_VOICE=pt-BR-FranciscaNeural (padrão) ou pt-BR-ThalitaNeural.
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p build output

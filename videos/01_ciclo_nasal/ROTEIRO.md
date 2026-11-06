@@ -1,7 +1,8 @@
 # Vídeo 01 — Por que às vezes uma narina parece respirar melhor que a outra?
 
 **Formato:** 1080 × 1920 (9:16) · 30 fps · ~61 s · pt-BR · TikTok / Reels
-**Arquivo final:** `output/ciclo_nasal_1080x1920.mp4`
+**Arquivo final:** `output/ciclo_nasal_1080x1920.mp4` (voz feminina neural **Francisca**, 61 s)
+**Alternativa:** `output/ciclo_nasal_voz_thalita.mp4` (voz feminina neural **Thalita**, 65 s; a animação é ressincronizada à fala)
 
 ## Roteiro final (ajustado para retenção)
 
@@ -75,6 +76,19 @@ Pontos que essas fontes sustentam: a congestão alterna entre os lados pela vari
 > Já reparou que uma narina parece respirar melhor que a outra? 👃 Isso tem nome: ciclo nasal. Os vasos da mucosa enchem de um lado e esvaziam do outro, e de tempos em tempos os lados trocam.
 > ⚠️ Entupimento persistente ou intenso não é ciclo nasal: procure um profissional de saúde.
 > #corpohumano #curiosidades #ciclonasal #anatomia #ciencia #nariz #saude
+
+## Voz
+
+Narração feita com vozes neurais femininas em pt-BR (Microsoft Edge TTS, `edge-tts`). O tempo de cada palavra vem do próprio serviço, por isso legendas e animações ficam exatas. Escolha a voz por variável de ambiente:
+
+```bash
+TTS_VOICE=pt-BR-FranciscaNeural ./build.sh   # padrão: suave e calorosa
+TTS_VOICE=pt-BR-ThalitaNeural   ./build.sh   # mais jovem e leve
+TTS_RATE=-5% TTS_PITCH=-2Hz ./build.sh       # ajustes finos de ritmo/tom
+TTS_ENGINE=rhvoice ./build.sh                # voz offline (robótica), só como reserva
+```
+
+Requer acesso de rede a `speech.platform.bing.com`.
 
 ## Como regenerar
 

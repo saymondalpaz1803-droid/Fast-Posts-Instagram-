@@ -12,6 +12,10 @@ from script_data import SEGMENTS, GAPS, LEAD_IN, TAIL
 
 BUILD = os.path.join(HERE, "..", "build")
 SR = 48000
+ENGINE = os.environ.get("TTS_ENGINE", "edge")            # "edge" (neural, natural) ou "rhvoice" (offline)
+EDGE_VOICE = os.environ.get("TTS_VOICE", "pt-BR-FranciscaNeural")
+EDGE_RATE = os.environ.get("TTS_RATE", "+0%")
+EDGE_PITCH = os.environ.get("TTS_PITCH", "-2Hz")
 VOICE = os.environ.get("RH_VOICE", "leticia-f123")
 RATE = os.environ.get("RH_RATE", "110")
 PITCH = os.environ.get("RH_PITCH", "100")
@@ -27,6 +31,71 @@ def synth(text, path):
     with wave.open(out) as w:
         a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
     return a
+
+
+def synth_edge(text, path):
+    """Voz neural (Microsoft Edge TTS). Retorna (áudio 48 kHz, [(palavra, início_s, fim_s)])."""
+    import asyncio, edge_tts
+
+    async def run():
+        com = edge_tts.Communicate(text, EDGE_VOICE, rate=EDGE_RATE, pitch=EDGE_PITCH, boundary="WordBoundary",
+                                   proxy=os.environ.get("HTTPS_PROXY") or None)
+        audio, words = bytearray(), []
+        async for ch in com.stream():
+            if ch["type"] == "audio":
+                audio += ch["data"]
+            elif ch["type"] == "WordBoundary":
+                words.append((ch["text"], ch["offset"] / 1e7, (ch["offset"] + ch["duration"]) / 1e7))
+        return bytes(audio), words
+
+    for attempt in range(4):
+        try:
+            data, words = asyncio.run(run())
+            break
+        except Exception:
+            if attempt == 3:
+                raise
+            import time
+            time.sleep(2 ** (attempt + 1))
+    mp3 = path.replace(".wav", ".mp3")
+    open(mp3, "wb").write(data)
+    out = path.replace(".wav", "_48k.wav")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", mp3, "-ar", str(SR), "-ac", "1",
+                    "-sample_fmt", "s16", out], check=True)
+    with wave.open(out) as w:
+        a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
+    return a, words
+
+
+def trim_bounds(a, thr=0.006):
+    env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
+    idx = np.where(env > thr)[0]
+    if len(idx) == 0:
+        return 0, len(a)
+    return max(0, idx[0] - 960), min(len(a), idx[-1] + 2400)
+
+
+def align_edge(toks, words, offset):
+    """Usa as fronteiras de palavra do serviço; tokens sem par recebem tempo interpolado."""
+    def norm(x):
+        return re.sub(r"[^\wÀ-ÿ]", "", x.lower())
+    out, j = [], 0
+    for k, t in enumerate(toks):
+        nt = norm(t["text"])
+        hit = None
+        for jj in range(j, min(j + 3, len(words))):
+            if norm(words[jj][0]) == nt or nt.startswith(norm(words[jj][0])) or norm(words[jj][0]).startswith(nt):
+                hit = jj
+                break
+        if hit is not None:
+            st, en = words[hit][1] - offset, words[hit][2] - offset
+            j = hit + 1
+        else:
+            st = out[-1]["end"] if out else 0.0
+            en = st + 0.25
+        out.append({"text": t["text"], "hl": t["hl"], "start": max(0.0, st), "end": max(st + 0.05, en),
+                    "brk": t["brk"]})
+    return out
 
 
 def trim(a, thr=0.012):
@@ -119,9 +188,15 @@ def main():
     timing = {"segments": [], "words": []}
     for sid, text in SEGMENTS:
         plain = text.replace("*", "")
-        a = trim(synth(plain, os.path.join(tmp, f"{sid}.wav")))
+        if ENGINE == "edge":
+            a, bwords = synth_edge(plain, os.path.join(tmp, f"{sid}.wav"))
+            s0, s1 = trim_bounds(a)
+            a = a[s0:s1]
+            words = align_edge(tokenize(text), bwords, s0 / SR)
+        else:
+            a = trim(synth(plain, os.path.join(tmp, f"{sid}.wav")))
+            words = align(tokenize(text), len(a) / SR, pauses(a))
         dur = len(a) / SR
-        words = align(tokenize(text), dur, pauses(a))
         for w in words:
             w["start"] += t; w["end"] += t; w["seg"] = sid
         timing["words"] += words
